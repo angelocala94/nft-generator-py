@@ -1,4 +1,5 @@
 from IPython.display import display 
+import hashlib
 from PIL import Image
 import random
 import json
@@ -55,9 +56,6 @@ def generate_unique_images(amount, config):
     }
     with open('./metadata/' + str(token["tokenId"]) + '.json', 'w') as outfile:
         json.dump(token_metadata, outfile, indent=4)
-
-  with open('./metadata/all-objects.json', 'w') as outfile:
-    json.dump(all_images, outfile, indent=4)
   
   for item in all_images:
     layers = [];
@@ -84,6 +82,34 @@ def generate_unique_images(amount, config):
       rgb_im = main_composite.convert('RGB')
       file_name = str(item["tokenId"]) + ".png"
       rgb_im.save("./images/" + file_name)
+
+  # Concatenate image hashes
+  concatenated_image_hashes = ""
+  
+  # Generate sha256 image hash
+  print("\nGenerating sha256 image hash...")
+  for i, item in enumerate(all_images):
+    with open('./metadata/' + str(item["tokenId"]) + '.json', 'r') as infile:
+      original_json = json.loads(infile.read())
+      image_file = open('./images/' + str(item["tokenId"]) + '.png', "rb").read()
+      original_json["image_hash"] = hashlib.sha256(image_file).hexdigest()
+      concatenated_image_hashes += original_json["image_hash"]
+      with open('./metadata/' + str(item["tokenId"]) + '.json', 'w') as outfile:
+        json.dump(original_json, outfile, indent=4)
+
+  print("\nConcatenated image hashes:\n")
+  print(concatenated_image_hashes)
+
+  print("\nProvenance Hash:\n")
+  provenance_hash = hashlib.sha256(concatenated_image_hashes.encode('utf-8')).hexdigest()
+  print(provenance_hash)
+
+  with open('./metadata/all-objects.json', 'w') as outfile:
+    json.dump({
+      "concatenated_image_hashes": concatenated_image_hashes, 
+      "provenance_hash": provenance_hash,
+      "images": all_images
+    }, outfile, indent=4)
   
   # v1.0.2 addition
   print("\nUnique NFT's generated. After uploading images to IPFS, please paste the CID below.\nYou may hit ENTER or CTRL+C to quit.")
