@@ -91,9 +91,11 @@ def generate_unique_images(amount, config):
   for i, item in enumerate(all_images):
     with open('./metadata/' + str(item["tokenId"]) + '.json', 'r') as infile:
       original_json = json.loads(infile.read())
+
       image_file = open('./images/' + str(item["tokenId"]) + '.png', "rb").read()
       original_json["image_hash"] = hashlib.sha256(image_file).hexdigest()
       concatenated_image_hashes += original_json["image_hash"]
+
       with open('./metadata/' + str(item["tokenId"]) + '.json', 'w') as outfile:
         json.dump(original_json, outfile, indent=4)
 
@@ -103,15 +105,7 @@ def generate_unique_images(amount, config):
   print("\nProvenance Hash:\n")
   provenance_hash = hashlib.sha256(concatenated_image_hashes.encode('utf-8')).hexdigest()
   print(provenance_hash)
-
-  with open('./metadata/all-objects.json', 'w') as outfile:
-    json.dump({
-      "concatenated_image_hashes": concatenated_image_hashes, 
-      "provenance_hash": provenance_hash,
-      "images": all_images
-    }, outfile, indent=4)
   
-  # v1.0.2 addition
   print("\nUnique NFT's generated. After uploading images to IPFS, please paste the CID below.\nYou may hit ENTER or CTRL+C to quit.")
   cid = input("IPFS Image CID (): ")
   if len(cid) > 0:
@@ -119,12 +113,30 @@ def generate_unique_images(amount, config):
       cid = "ipfs://{}".format(cid)
     if cid.endswith("/"):
       cid = cid[:-1]
+    
+    images_list = []
     for i, item in enumerate(all_images):
       with open('./metadata/' + str(item["tokenId"]) + '.json', 'r') as infile:
         original_json = json.loads(infile.read())
         original_json["image"] = original_json["image"].replace(config["baseURI"]+"/", cid+"/")
+
+        images_list.append({
+          "initial_index": i + 1,
+          "name": original_json["name"],
+          "image_hash" : original_json["image_hash"],
+          "image": original_json["image"],
+          "attributes": original_json["attributes"]
+        })
+        
         with open('./metadata/' + str(item["tokenId"]) + '.json', 'w') as outfile:
           json.dump(original_json, outfile, indent=4)
+
+  with open('./metadata/all-objects.json', 'w') as outfile:
+    json.dump({
+      "concatenated_image_hashes": concatenated_image_hashes, 
+      "provenance_hash": provenance_hash,
+      "images": images_list
+    }, outfile, indent=4)
 
 generate_unique_images(11, {
   "layers": [
